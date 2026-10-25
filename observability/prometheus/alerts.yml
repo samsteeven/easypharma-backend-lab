@@ -1,0 +1,37 @@
+# Trois règles d'alerte sur les indicateurs de service (le détail est dans observability/README.md).
+groups:
+  - name: easypharma-service
+    rules:
+      - alert: BackendDown
+        expr: up{job="backend"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Le backend EasyPharma ne répond plus aux collectes Prometheus"
+          description: "up == 0 depuis plus de 30 s pour {{ $labels.instance }}."
+
+      - alert: HighErrorRate
+        # Part des réponses 5xx sur la dernière minute (hors /actuator).
+        expr: |
+          sum(rate(http_server_requests_seconds_count{job="backend",status=~"5..",uri!~"/actuator.*"}[1m]))
+            /
+          sum(rate(http_server_requests_seconds_count{job="backend",uri!~"/actuator.*"}[1m])) > 0.05
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Plus de 5 % de réponses en erreur serveur"
+          description: "Taux d'erreurs 5xx : {{ $value | humanizePercentage }} sur 1 minute."
+
+      - alert: HighLatencyP95
+        # p95 de la durée de traitement, tous endpoints métier confondus (hors /actuator).
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(http_server_requests_seconds_bucket{job="backend",uri!~"/actuator.*"}[1m]))) > 0.5
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p95 de la durée de traitement supérieur à 500 ms"
+          description: "p95 actuel : {{ $value | humanizeDuration }}."

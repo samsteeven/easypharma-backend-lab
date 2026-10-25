@@ -24,6 +24,7 @@ public class PatientSearchController {
 
     private final PharmacyMedicationRepository pharmacyMedicationRepository;
     private final com.app.easypharma_backend.domain.search.geo.GeoSearchRepository geoSearchRepository;
+    private final io.micrometer.core.instrument.MeterRegistry meterRegistry;
     private final PharmacyMapper pharmacyMapper;
     private final com.app.easypharma_backend.infrastructure.security.JwtService jwtService;
     private final com.app.easypharma_backend.application.auth.usecase.GetUserProfileUseCase getUserProfileUseCase;
@@ -151,6 +152,13 @@ public class PatientSearchController {
             }
         }
 
+        // Indicateur de volume : nombre d'offres renvoyées par recherche, par type de tri (voir observability/).
+        io.micrometer.core.instrument.DistributionSummary.builder("easypharma.search.results")
+                .description("Offres renvoyées par une recherche de médicament")
+                .baseUnit("offres")
+                .tag("sort", sortBy.toUpperCase())
+                .register(meterRegistry)
+                .record(dtos.size());
         return ResponseEntity.ok(dtos);
     }
 

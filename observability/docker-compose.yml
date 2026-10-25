@@ -1,0 +1,192 @@
+# Pile d'observabilité d'EasyPharma : traces et journaux via l'agent OpenTelemetry, métriques via Micrometer/Actuator.
+#
+#   cp .env.example .env            # MSSQL_SA_PASSWORD, JWT_SECRET, GRAFANA_ADMIN_PASSWORD
+#   docker compose up -d --build    # Grafana http://localhost:3000, Prometheus http://localhost:9090
+#   docker compose --profile load run --rm k6    # génère du trafic
+#
+# backend --(Actuator, scrape)--------------> Prometheus --(remote_write)--> VictoriaMetrics (rétention longue)
+# backend --(agent OTel : traces + logs)----> Collector --> Tempo (traces)  /  Loki (journaux)
+# Grafana lit Prometheus, VictoriaMetrics, Loki et Tempo.
+name: easypharma-obs
+
+services:
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?définir MSSQL_SA_PASSWORD dans .env}
+    volumes:
+      - mssqldata:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  db-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    depends_on:
+      mssql: { condition: service_healthy }
+    environment:
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+    volumes:
+      - ./db:/db:ro
+    entrypoint: ["/bin/sh", "/db/init.sh"]
+    restart: "no"
+
+  # Télécharge l'agent OpenTelemetry (version figée) dans un volume partagé avec le backend.
+  otel-agent:
+    image: curlimages/curl:8.12.1
+    user: root
+    entrypoint:
+      - sh
+      - -c
+      - "[ -s /otel/opentelemetry-javaagent.jar ] || curl -fsSL -o /otel/opentelemetry-javaagent.jar https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v2.31.1/opentelemetry-javaagent.jar"
+    volumes:
+      - otel-agent:/otel
+    restart: "no"
+
+  backend:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    depends_on:
+      db-init: { condition: service_completed_successfully }
+      otel-agent: { condition: service_completed_successfully }
+      otel-collector: { condition: service_started }
+    environment:
+      SPRING_PROFILES_ACTIVE: dev,sqlserver,observability
+      SPRING_DATASOURCE_URL: jdbc:sqlserver://mssql:1433;databaseName=easypharma_db;encrypt=true;trustServerCertificate=true
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?définir JWT_SECRET dans .env}
+      SPRING_JPA_SHOW_SQL: "false"
+      # Agent OpenTelemetry : traces et journaux en OTLP vers le collecteur ; les métriques passent par Micrometer.
+      JAVA_TOOL_OPTIONS: -javaagent:/otel/opentelemetry-javaagent.jar -Xmx768m
+      OTEL_SERVICE_NAME: easypharma-backend
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=lab
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_METRICS_EXPORTER: none
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: otlp
+      # Échantillonnage : 100 % par défaut ; descendre sous forte charge (ex. 0.1).
+      OTEL_TRACES_SAMPLER: parentbased_traceidratio
+      OTEL_TRACES_SAMPLER_ARG: ${TRACE_SAMPLE_RATIO:-1.0}
+    volumes:
+      - otel-agent:/otel:ro
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 40s
+
+  seed:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    depends_on:
+      backend: { condition: service_healthy }
+    environment:
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+    volumes:
+      - ./db:/db:ro
+    entrypoint: ["/bin/sh", "/db/seed.sh"]
+    restart: "no"
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.120.0
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./otel-collector/config.yaml:/etc/otelcol/config.yaml:ro
+    depends_on:
+      - tempo
+      - loki
+
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=2d
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - promdata:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      - victoria-metrics
+
+  # Stockage long terme : Prometheus y écrit en remote_write, la rétention est de 12 mois contre 2 jours localement.
+  victoria-metrics:
+    image: victoriametrics/victoria-metrics:v1.113.0
+    command:
+      - -retentionPeriod=12
+      - -storageDataPath=/storage
+    volumes:
+      - vmdata:/storage
+    ports:
+      - "8428:8428"
+
+  loki:
+    image: grafana/loki:3.4.2
+    command: ["-config.file=/etc/loki/loki.yaml"]
+    volumes:
+      - ./loki/loki.yaml:/etc/loki/loki.yaml:ro
+      - lokidata:/loki
+    ports:
+      - "3100:3100"
+
+  tempo:
+    image: grafana/tempo:2.7.1
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ./tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempodata:/var/tempo
+    ports:
+      - "3200:3200"
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?définir GRAFANA_ADMIN_PASSWORD dans .env}
+      GF_USERS_DEFAULT_THEME: light
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafanadata:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+      - victoria-metrics
+      - loki
+      - tempo
+
+  # Générateur de trafic (profil « load ») : docker compose --profile load run --rm k6
+  k6:
+    profiles: ["load"]
+    image: grafana/k6:latest
+    depends_on:
+      seed: { condition: service_completed_successfully }
+    environment:
+      BASE: http://backend:8080
+      SCENARIO: ${SCENARIO:-mixed}
+      RATE: ${RATE:-20}
+      DURATION: ${DURATION:-3m}
+      VUS: ${VUS:-20}
+    volumes:
+      - ./k6:/k6:ro
+    entrypoint: ["k6", "run", "/k6/load.js"]
+
+volumes:
+  mssqldata:
+  otel-agent:
+  promdata:
+  vmdata:
+  lokidata:
+  tempodata:
+  grafanadata:

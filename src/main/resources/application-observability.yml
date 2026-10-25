@@ -1,0 +1,25 @@
+# Profil activé avec dev,sqlserver dans observability/docker-compose.yml : histogrammes et étiquettes pour Prometheus.
+management:
+  metrics:
+    tags:
+      application: easypharma-backend
+    distribution:
+      # Nécessaire pour histogram_quantile() : buckets de latence par endpoint.
+      percentiles-histogram:
+        http.server.requests: true
+      slo:
+        http.server.requests: 50ms,100ms,250ms,500ms,1s,2s,5s
+  health:
+    # Ces dépendances ne font pas partie de la pile de démonstration : sans cela /actuator/health renvoie 503.
+    redis:
+      enabled: false
+    rabbit:
+      enabled: false
+    mail:
+      enabled: false
+
+logging:
+  level:
+    # Le niveau DEBUG du projet (SQL Hibernate compris) noierait Loki sous charge.
+    com.app.easypharma: INFO
+    org.hibernate.SQL: WARN
