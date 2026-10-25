@@ -1,5 +1,7 @@
 # EasyPharma backend : un même code sur PostgreSQL/PostGIS et SQL Server
 
+[![CI](https://github.com/samsteeven/easypharma-backend-lab/actions/workflows/backend-ci-cd.yml/badge.svg)](https://github.com/samsteeven/easypharma-backend-lab/actions/workflows/backend-ci-cd.yml)
+
 API REST Spring Boot de recherche et de commande de médicaments (Cameroun), **portée sur SQL Server 2022** en gardant PostgreSQL + PostGIS.
 Le dépôt montre comment une application réelle, écrite pour PostgreSQL, devient portable : migrations, requêtes spatiales, tests sur trois bases.
 
