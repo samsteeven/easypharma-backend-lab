@@ -4,23 +4,28 @@ import com.app.easypharma_backend.domain.medication.entity.PharmacyMedication;
 import com.app.easypharma_backend.domain.pharmacy.entity.Pharmacy;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.UUID;
 
 @Repository
 @Profile("!sqlserver")
+@RequiredArgsConstructor
 public class PostgisGeoSearchRepository implements GeoSearchRepository {
 
     @PersistenceContext
     private EntityManager em;
 
+    private final GeoEntityLoader loader;
+
     @Override
     @SuppressWarnings("unchecked")
     public List<Pharmacy> findNearbyPharmacies(double latitude, double longitude, double radiusKm) {
-        return em.createNativeQuery("""
-                SELECT * FROM pharmacies p
+        List<UUID> ids = em.createNativeQuery("""
+                SELECT p.id FROM pharmacies p
                 WHERE p.status = 'APPROVED'
                 AND ST_DistanceSphere(
                     ST_MakePoint(CAST(p.longitude AS DOUBLE PRECISION), CAST(p.latitude AS DOUBLE PRECISION)),
@@ -30,19 +35,20 @@ public class PostgisGeoSearchRepository implements GeoSearchRepository {
                     ST_MakePoint(CAST(p.longitude AS DOUBLE PRECISION), CAST(p.latitude AS DOUBLE PRECISION)),
                     ST_MakePoint(:longitude, :latitude)
                 )
-                """, Pharmacy.class)
+                """, UUID.class)
                 .setParameter("latitude", latitude)
                 .setParameter("longitude", longitude)
                 .setParameter("radiusKm", radiusKm)
                 .getResultList();
+        return loader.pharmacies(ids);
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public List<PharmacyMedication> searchMedicationsNearest(String query, String therapeuticClass,
             double latitude, double longitude) {
-        return em.createNativeQuery("""
-                SELECT pm.* FROM pharmacy_medications pm
+        List<UUID> ids = em.createNativeQuery("""
+                SELECT pm.id FROM pharmacy_medications pm
                 JOIN medications m ON pm.medication_id = m.id
                 JOIN pharmacies p ON pm.pharmacy_id = p.id
                 WHERE pm.is_available = true
@@ -57,11 +63,12 @@ public class PostgisGeoSearchRepository implements GeoSearchRepository {
                     ST_MakePoint(CAST(p.longitude AS DOUBLE PRECISION), CAST(p.latitude AS DOUBLE PRECISION)),
                     ST_MakePoint(:userLon, :userLat)
                 ) ASC
-                """, PharmacyMedication.class)
+                """, UUID.class)
                 .setParameter("query", query)
                 .setParameter("therapeuticClass", therapeuticClass)
                 .setParameter("userLat", latitude)
                 .setParameter("userLon", longitude)
                 .getResultList();
+        return loader.offers(ids);
     }
 }

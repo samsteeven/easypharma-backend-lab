@@ -67,8 +67,9 @@ public interface PharmacyMedicationRepository extends JpaRepository<PharmacyMedi
         // (le tri par distance est dans GeoSearchRepository, une implémentation par base)
         @Query("""
                         SELECT pm FROM PharmacyMedication pm
-                        JOIN pm.medication m
-                        JOIN pm.pharmacy p
+                        JOIN FETCH pm.medication m
+                        JOIN FETCH pm.pharmacy p
+                        JOIN FETCH p.user
                         WHERE pm.isAvailable = true
                         AND p.status = 'APPROVED'
                         AND (

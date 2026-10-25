@@ -2,6 +2,9 @@ package com.app.easypharma_backend.domain.search.geo;
 
 import com.app.easypharma_backend.domain.medication.entity.PharmacyMedication;
 import com.app.easypharma_backend.domain.pharmacy.entity.Pharmacy;
+import jakarta.persistence.EntityManagerFactory;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +34,8 @@ abstract class GeoSearchContract {
     private GeoSearchRepository geoSearch;
     @Autowired
     private JdbcTemplate jdbc;
+    @Autowired
+    private EntityManagerFactory entityManagerFactory;
 
     @BeforeEach
     void seed() {
@@ -108,5 +113,38 @@ abstract class GeoSearchContract {
     void medicationSearchHonoursTherapeuticClassAndSymptoms() {
         assertThat(geoSearch.searchMedicationsNearest("fièvre", "ANTIBIOTIQUE", USER_LAT, USER_LON)).isEmpty();
         assertThat(geoSearch.searchMedicationsNearest("fièvre", "ANTALGIQUE", USER_LAT, USER_LON)).hasSize(3);
+    }
+
+    private Statistics freshStatistics() {
+        Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+        statistics.setStatisticsEnabled(true);
+        statistics.clear();
+        return statistics;
+    }
+
+    @Test
+    void nearbyPharmaciesLoadTheirOwnerInOneBatchNotOneQueryEach() {
+        Statistics statistics = freshStatistics();
+
+        List<Pharmacy> pharmacies = geoSearch.findNearbyPharmacies(USER_LAT, USER_LON, 400);
+        pharmacies.forEach(p -> p.getUser().getEmail()); // le mapper DTO lit le propriétaire de chaque pharmacie
+
+        // 1 requête spatiale + 1 chargement groupé ; un N+1 en ferait 1 + 3.
+        assertThat(pharmacies).hasSize(3);
+        assertThat(statistics.getPrepareStatementCount()).isLessThanOrEqualTo(2);
+    }
+
+    @Test
+    void nearestOffersLoadMedicationPharmacyAndOwnerInOneBatch() {
+        Statistics statistics = freshStatistics();
+
+        List<PharmacyMedication> offers = geoSearch.searchMedicationsNearest("doli", null, USER_LAT, USER_LON);
+        offers.forEach(pm -> {
+            pm.getMedication().getName();
+            pm.getPharmacy().getUser().getEmail();
+        });
+
+        assertThat(offers).hasSize(3);
+        assertThat(statistics.getPrepareStatementCount()).isLessThanOrEqualTo(2);
     }
 }
