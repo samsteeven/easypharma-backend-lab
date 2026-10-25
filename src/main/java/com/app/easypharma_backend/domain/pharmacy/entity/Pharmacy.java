@@ -1,5 +1,7 @@
 package com.app.easypharma_backend.domain.pharmacy.entity;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import com.app.easypharma_backend.domain.auth.entity.User;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
@@ -35,7 +37,8 @@ public class Pharmacy {
     @Column(name = "license_number", nullable = false, unique = true, length = 50)
     private String licenseNumber;
 
-    @Column(name = "address", nullable = false, columnDefinition = "TEXT")
+    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
+    @Column(name = "address", nullable = false)
     private String address;
 
     @Column(name = "city", nullable = false, length = 100)
@@ -58,7 +61,8 @@ public class Pharmacy {
     @Builder.Default
     private Integer ratingCount = 0;
 
-    @Column(name = "description", columnDefinition = "TEXT")
+    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
+    @Column(name = "description")
     private String description;
 
     @Column(name = "opening_hours", length = 255)

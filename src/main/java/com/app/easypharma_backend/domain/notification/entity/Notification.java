@@ -1,5 +1,7 @@
 package com.app.easypharma_backend.domain.notification.entity;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import com.app.easypharma_backend.domain.auth.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -30,7 +32,8 @@ public class Notification {
     @Column(name = "title", nullable = false, length = 200)
     private String title;
 
-    @Column(name = "message", nullable = false, columnDefinition = "TEXT")
+    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
+    @Column(name = "message", nullable = false)
     private String message;
 
     @Enumerated(EnumType.STRING)

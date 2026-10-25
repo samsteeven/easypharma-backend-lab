@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 public class PatientSearchController {
 
     private final PharmacyMedicationRepository pharmacyMedicationRepository;
+    private final com.app.easypharma_backend.domain.search.geo.GeoSearchRepository geoSearchRepository;
     private final PharmacyMapper pharmacyMapper;
     private final com.app.easypharma_backend.infrastructure.security.JwtService jwtService;
     private final com.app.easypharma_backend.application.auth.usecase.GetUserProfileUseCase getUserProfileUseCase;
@@ -88,8 +89,8 @@ public class PatientSearchController {
             if (userLat == null || userLon == null) {
                 return ResponseEntity.badRequest().build();
             }
-            // Use PostGIS native query for efficient spatial sorting
-            results = pharmacyMedicationRepository.searchGlobalPostGIS(query, therapeuticClassStr, userLat, userLon);
+            // Tri spatial natif (PostGIS ou SQL Server selon le profil)
+            results = geoSearchRepository.searchMedicationsNearest(query, therapeuticClassStr, userLat, userLon);
         } else {
             // Default JPQL search
             results = pharmacyMedicationRepository.searchGlobal(query, therapeuticClassStr);

@@ -26,27 +26,26 @@ public interface MedicationRepository extends JpaRepository<Medication, UUID> {
     // Recherche médicaments nécessitant ordonnance
     List<Medication> findByRequiresPrescriptionTrue();
 
-    // Recherche par nom (LIKE, case insensitive)
-    @Query(value = "SELECT * FROM medications WHERE name ILIKE '%' || CAST(:query AS text) || '%'", nativeQuery = true)
+    // Recherche par nom (LIKE, insensible à la casse) - JPQL portable PostgreSQL / SQL Server
+    @Query("SELECT m FROM Medication m WHERE LOWER(m.name) LIKE LOWER(CONCAT('%', :query, '%'))")
     List<Medication> searchByName(@Param("query") String query);
 
-    // Recherche full-text (nom ou nom générique)
-    @Query(value = """
-            SELECT * FROM medications
-            WHERE name ILIKE '%' || CAST(:query AS text) || '%'
-            OR generic_name ILIKE '%' || CAST(:query AS text) || '%'
-            """, nativeQuery = true)
+    // Recherche par nom ou nom générique
+    @Query("""
+            SELECT m FROM Medication m
+            WHERE LOWER(m.name) LIKE LOWER(CONCAT('%', :query, '%'))
+            OR LOWER(m.genericName) LIKE LOWER(CONCAT('%', :query, '%'))
+            """)
     List<Medication> searchByNameOrGenericName(@Param("query") String query);
 
-    // Recherche avec filtres multiples (Requête Native pour compatibilité
-    // PostgreSQL stricte)
-    @Query(value = """
-            SELECT * FROM medications
-            WHERE (CAST(:name AS text) IS NULL OR name ILIKE '%' || CAST(:name AS text) || '%')
-            AND (CAST(:therapeuticClass AS text) IS NULL OR therapeutic_class = CAST(:therapeuticClass AS text))
-            AND (:requiresPrescription IS NULL OR requires_prescription = :requiresPrescription)
-            ORDER BY name ASC
-            """, nativeQuery = true)
+    // Recherche avec filtres multiples (paramètres nuls = filtre ignoré ; CAST pour le typage PostgreSQL)
+    @Query("""
+            SELECT m FROM Medication m
+            WHERE (CAST(:name AS string) IS NULL OR LOWER(m.name) LIKE LOWER(CONCAT('%', CAST(:name AS string), '%')))
+            AND (CAST(:therapeuticClass AS string) IS NULL OR CAST(m.therapeuticClass AS string) = CAST(:therapeuticClass AS string))
+            AND (:requiresPrescription IS NULL OR m.requiresPrescription = :requiresPrescription)
+            ORDER BY m.name ASC
+            """)
     List<Medication> searchWithFilters(
             @Param("name") String name,
             @Param("therapeuticClass") String therapeuticClass,

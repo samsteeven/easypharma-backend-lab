@@ -10,5 +10,5 @@ spring:
     hibernate:
       ddl-auto: validate
   flyway:
-    locations: classpath:db/migration/sqlserver
+    locations: classpath:db/sqlserver
     baseline-on-migrate: false

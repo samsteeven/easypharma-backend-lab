@@ -1,5 +1,7 @@
 package com.app.easypharma_backend.domain.order.entity;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import com.app.easypharma_backend.domain.auth.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -30,7 +32,8 @@ public class ReturnRequest {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "reason", nullable = false, columnDefinition = "TEXT")
+    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
+    @Column(name = "reason", nullable = false)
     private String reason;
 
     @Enumerated(EnumType.STRING)
@@ -38,7 +41,8 @@ public class ReturnRequest {
     @Builder.Default
     private ReturnRequestStatus status = ReturnRequestStatus.PENDING;
 
-    @Column(name = "admin_comment", columnDefinition = "TEXT")
+    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
+    @Column(name = "admin_comment")
     private String adminComment;
 
     @Column(name = "created_at", nullable = false, updatable = false)

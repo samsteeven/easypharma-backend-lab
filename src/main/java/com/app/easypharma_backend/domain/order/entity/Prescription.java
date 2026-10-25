@@ -1,5 +1,7 @@
 package com.app.easypharma_backend.domain.order.entity;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import com.app.easypharma_backend.domain.auth.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -30,7 +32,8 @@ public class Prescription {
     @JoinColumn(name = "order_id")
     private Order order;
 
-    @Column(name = "photo_url", nullable = false, columnDefinition = "TEXT")
+    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
+    @Column(name = "photo_url", nullable = false)
     private String photoUrl;
 
     @Enumerated(EnumType.STRING)
@@ -38,7 +41,8 @@ public class Prescription {
     @Builder.Default
     private PrescriptionStatus status = PrescriptionStatus.PENDING;
 
-    @Column(name = "pharmacist_comment", columnDefinition = "TEXT")
+    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
+    @Column(name = "pharmacist_comment")
     private String pharmacistComment;
 
     @Column(name = "created_at", nullable = false, updatable = false)

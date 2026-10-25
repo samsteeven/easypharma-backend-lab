@@ -1,5 +1,7 @@
 package com.app.easypharma_backend.domain.audit.entity;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -63,7 +65,8 @@ public class AuditLog {
     /**
      * JSON representation of changes made
      */
-    @Column(columnDefinition = "TEXT")
+    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
+    @Column
     private String details;
 
     /**

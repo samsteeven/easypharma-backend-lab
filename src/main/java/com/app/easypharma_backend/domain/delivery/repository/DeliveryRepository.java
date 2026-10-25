@@ -59,18 +59,6 @@ public interface DeliveryRepository extends JpaRepository<Delivery, UUID> {
         """)
     Long countFailedDeliveriesByPerson(@Param("deliveryPersonId") UUID deliveryPersonId);
 
-    // Temps moyen de livraison (en minutes)
-    @Query(
-            value = "SELECT AVG(EXTRACT(EPOCH FROM (d.delivered_at - d.picked_up_at)) / 60) " +
-                    "FROM delivery d " +
-                    "WHERE d.status = 'DELIVERED' " +
-                    "AND d.picked_up_at IS NOT NULL " +
-                    "AND d.delivered_at IS NOT NULL",
-            nativeQuery = true
-    )
-    Double calculateAverageDeliveryTimeInMinutes();
-
-
     // Vérifier si commande a déjà une livraison
     boolean existsByOrderId(UUID orderId);
 }

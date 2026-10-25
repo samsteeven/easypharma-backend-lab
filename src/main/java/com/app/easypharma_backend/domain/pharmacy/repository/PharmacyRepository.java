@@ -46,22 +46,5 @@ public interface PharmacyRepository extends JpaRepository<Pharmacy, UUID> {
     @Query("SELECT p FROM Pharmacy p WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', :name, '%')) AND p.status = 'APPROVED'")
     List<Pharmacy> searchByNameAndApproved(@Param("name") String name);
 
-    // Recherche pharmacies à proximité (rayon en km)
-    // Utilise la formule de Haversine pour calculer la distance
-    @Query(value = """
-            SELECT * FROM pharmacies p
-            WHERE p.status = 'APPROVED'
-            AND ST_DistanceSphere(
-                ST_MakePoint(CAST(p.longitude AS DOUBLE PRECISION), CAST(p.latitude AS DOUBLE PRECISION)),
-                ST_MakePoint(:longitude, :latitude)
-            ) <= :radiusKm * 1000
-            ORDER BY ST_DistanceSphere(
-                ST_MakePoint(CAST(p.longitude AS DOUBLE PRECISION), CAST(p.latitude AS DOUBLE PRECISION)),
-                ST_MakePoint(:longitude, :latitude)
-            )
-            """, nativeQuery = true)
-    List<Pharmacy> findNearbyPharmacies(
-            @Param("latitude") Double latitude,
-            @Param("longitude") Double longitude,
-            @Param("radiusKm") Double radiusKm);
+    // La recherche par proximité est dans GeoSearchRepository (PostGIS / SQL Server).
 }

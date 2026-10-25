@@ -1,5 +1,7 @@
 package com.app.easypharma_backend.domain.order.entity;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import com.app.easypharma_backend.domain.auth.entity.User;
 import com.app.easypharma_backend.domain.pharmacy.entity.Pharmacy;
 import jakarta.persistence.*;
@@ -45,10 +47,12 @@ public class Review {
     @Column(name = "courier_rating")
     private Integer courierRating; // 1 à 5 (Livreur)
 
-    @Column(name = "courier_comment", columnDefinition = "TEXT")
+    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
+    @Column(name = "courier_comment")
     private String courierComment;
 
-    @Column(name = "comment", columnDefinition = "TEXT")
+    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
+    @Column(name = "comment")
     private String comment;
 
     @Enumerated(EnumType.STRING)

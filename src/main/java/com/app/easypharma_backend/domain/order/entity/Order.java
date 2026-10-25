@@ -1,5 +1,7 @@
 package com.app.easypharma_backend.domain.order.entity;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import com.app.easypharma_backend.domain.auth.entity.User;
 import com.app.easypharma_backend.domain.pharmacy.entity.Pharmacy;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -52,7 +54,8 @@ public class Order {
     @Builder.Default
     private OrderStatus status = OrderStatus.PENDING;
 
-    @Column(name = "delivery_address", nullable = false, columnDefinition = "TEXT")
+    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
+    @Column(name = "delivery_address", nullable = false)
     private String deliveryAddress;
 
     @Column(name = "delivery_city", nullable = false, length = 100)
@@ -67,7 +70,8 @@ public class Order {
     @Column(name = "delivery_longitude", precision = 11, scale = 8)
     private BigDecimal deliveryLongitude;
 
-    @Column(name = "notes", columnDefinition = "TEXT")
+    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
+    @Column(name = "notes")
     private String notes;
 
     @Column(name = "confirmed_at")

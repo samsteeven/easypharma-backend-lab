@@ -1,5 +1,7 @@
 package com.app.easypharma_backend.domain.medication.entity;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.UuidGenerator;
@@ -31,7 +33,8 @@ public class Medication {
     @Column(name = "therapeutic_class", nullable = false, length = 50)
     private TherapeuticClass therapeuticClass;
 
-    @Column(name = "description", columnDefinition = "TEXT")
+    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
+    @Column(name = "description")
     private String description;
 
     @Column(name = "dosage", length = 100)
@@ -47,7 +50,8 @@ public class Medication {
     @Column(name = "requires_prescription", nullable = false)
     private Boolean requiresPrescription = false;
 
-    @Column(name = "symptoms", columnDefinition = "TEXT")
+    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
+    @Column(name = "symptoms")
     private String symptoms;
 
     @Column(name = "created_at", nullable = false, updatable = false)

@@ -8,6 +8,7 @@ import com.app.easypharma_backend.domain.pharmacy.entity.Pharmacy;
 import com.app.easypharma_backend.domain.pharmacy.entity.PharmacyStatus;
 import com.app.easypharma_backend.domain.pharmacy.mapper.PharmacyMapper;
 import com.app.easypharma_backend.domain.pharmacy.repository.PharmacyRepository;
+import com.app.easypharma_backend.domain.search.geo.GeoSearchRepository;
 import com.app.easypharma_backend.domain.pharmacy.service.interfaces.PharmacyServiceInterface;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ import java.util.UUID;
 public class PharmacyServiceImplementation implements PharmacyServiceInterface {
 
     private final PharmacyRepository pharmacyRepository;
+    private final GeoSearchRepository geoSearchRepository;
     private final PharmacyMapper pharmacyMapper;
     private final UserRepository userRepository;
 
@@ -132,7 +134,7 @@ public class PharmacyServiceImplementation implements PharmacyServiceInterface {
     public List<PharmacyDTO> findNearbyPharmacies(@NonNull Double latitude, @NonNull Double longitude,
             @NonNull Double radiusKm) {
         return pharmacyMapper.toDTOList(
-                pharmacyRepository.findNearbyPharmacies(latitude, longitude, radiusKm));
+                geoSearchRepository.findNearbyPharmacies(latitude, longitude, radiusKm));
     }
 
     @Override
