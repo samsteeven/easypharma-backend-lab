@@ -17,6 +17,7 @@ Le dépôt montre comment une application réelle, écrite pour PostgreSQL, devi
 3. **Recherche par proximité réécrite** pour SQL Server (`STDistance`) derrière une interface, avec l'implémentation PostGIS conservée.
 4. **Requêtes rendues portables** : `ILIKE` et `CAST(... AS text)` remplacés par du JPQL (`LOWER(...) LIKE`), colonnes `TEXT` remplacées par `@JdbcTypeCode(LONGVARCHAR)`.
 5. **Tests** : la suite existante (75 tests) tourne sans modification sur H2, PostgreSQL et SQL Server ; un contrat de tests géographiques vérifie les deux implémentations sur de vrais conteneurs.
+6. **Correction d'un N+1** dans les recherches géographiques : les requêtes spatiales ne renvoient plus que des identifiants triés, que `GeoEntityLoader` charge ensuite avec leurs relations (`JOIN FETCH`). Avant : 119 requêtes SQL pour 113 pharmacies et 490 pour 238 offres ; après : 7 et 13. Deux tests comptent les requêtes via les statistiques Hibernate et échouent si le N+1 revient. Effet mesuré avec k6 (p95 de la recherche triée par distance : 21,6 s avant, 0,35 s après) dans [`easypharma-dotnet`](https://github.com/samsteeven/easypharma-dotnet/tree/main/bench).
 
 ## Ce qui change entre les deux bases
 
@@ -90,7 +91,7 @@ mvn test -Dtest=*GeoSearchIT               # contrat géographique sur PostGIS e
 ```
 `run-tests.ps1` ne modifie pas les tests : il surcharge la datasource par des variables d'environnement Spring et laisse le driver `jdbc:tc:` démarrer le conteneur. Lui passer `-Mvn <chemin vers mvn>` si `mvn` n'est pas dans le `PATH`.
 
-`GeoSearchContract` est une classe abstraite de 5 cas (tri par distance, rayon, exclusion des pharmacies non approuvées, recherche insensible à la casse et aux accents, filtre de classe thérapeutique) ; `PostgisGeoSearchIT` et `SqlServerGeoSearchIT` l'exécutent chacun contre son conteneur. Côté SQL Server, ce test valide aussi les migrations Flyway et le schéma Hibernate.
+`GeoSearchContract` est une classe abstraite de 7 cas (tri par distance, rayon, exclusion des pharmacies non approuvées, recherche insensible à la casse et aux accents, filtre de classe thérapeutique, et 2 garde-fous contre le N+1) ; `PostgisGeoSearchIT` et `SqlServerGeoSearchIT` l'exécutent chacun contre son conteneur. Côté SQL Server, ce test valide aussi les migrations Flyway et le schéma Hibernate.
 
 | Base | Tests | Durée de la suite* |
 |---|---|---|
