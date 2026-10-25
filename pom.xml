@@ -29,7 +29,7 @@
         <jjwt.version>0.12.5</jjwt.version>
         <springdoc.version>2.8.4</springdoc.version>
         <itext.version>8.0.3</itext.version>
-        <testcontainers.version>1.19.8</testcontainers.version>
+        <testcontainers.version>1.21.4</testcontainers.version>
         <postgis.version>2025.1.0</postgis.version>
         <hibernate-spatial.version>6.4.4.Final</hibernate-spatial.version>
         <!-- SonarQube Configuration -->
@@ -213,6 +213,12 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>postgresql</artifactId>
+            <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>mssqlserver</artifactId>
             <version>${testcontainers.version}</version>
             <scope>test</scope>
         </dependency>
