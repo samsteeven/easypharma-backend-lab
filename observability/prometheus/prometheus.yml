@@ -6,6 +6,12 @@ global:
 rule_files:
   - /etc/prometheus/alerts.yml
 
+# Les alertes passent par Alertmanager, qui les notifie (voir alertmanager/alertmanager.yml).
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
 # Copie longue durée de toutes les séries vers VictoriaMetrics (Prometheus ne garde que 2 jours).
 remote_write:
   - url: http://victoria-metrics:8428/api/v1/write

@@ -1,0 +1,15 @@
+# Alertmanager : reçoit les alertes de Prometheus et les envoie à un récepteur.
+# Ici le récepteur est un petit serveur local (alert-sink) qui enregistre chaque notification avec son heure de réception ;
+# en production, remplacer par un récepteur e-mail, Slack, PagerDuty, etc. (voir README).
+route:
+  receiver: sink
+  group_by: [alertname]
+  group_wait: 5s        # attente avant la première notification d'un groupe (30 s par défaut)
+  group_interval: 30s   # délai avant de notifier un changement dans un groupe déjà notifié
+  repeat_interval: 4h   # rappel d'une alerte toujours active
+
+receivers:
+  - name: sink
+    webhook_configs:
+      - url: http://alert-sink:8080/alerts
+        send_resolved: true

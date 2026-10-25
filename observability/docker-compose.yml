@@ -76,7 +76,7 @@ services:
     volumes:
       - otel-agent:/otel:ro
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP"]
       interval: 10s
@@ -115,9 +115,32 @@ services:
       - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
       - promdata:/prometheus
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
     depends_on:
       - victoria-metrics
+
+  # Reçoit les alertes de Prometheus et les notifie (ici vers un récepteur local de test).
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanagerdata:/alertmanager
+    ports:
+      - "127.0.0.1:9093:9093"
+    depends_on:
+      - alert-sink
+
+  # Récepteur de notifications de laboratoire : enregistre chaque webhook avec son heure (GET /received).
+  alert-sink:
+    image: python:3.12-alpine
+    command: ["python", "/sink/sink.py"]
+    volumes:
+      - ./alert-sink:/sink:ro
+    ports:
+      - "127.0.0.1:8099:8080"
 
   # Stockage long terme : Prometheus y écrit en remote_write, la rétention est de 12 mois contre 2 jours localement.
   victoria-metrics:
@@ -128,7 +151,7 @@ services:
     volumes:
       - vmdata:/storage
     ports:
-      - "8428:8428"
+      - "127.0.0.1:8428:8428"
 
   loki:
     image: grafana/loki:3.4.2
@@ -137,7 +160,7 @@ services:
       - ./loki/loki.yaml:/etc/loki/loki.yaml:ro
       - lokidata:/loki
     ports:
-      - "3100:3100"
+      - "127.0.0.1:3100:3100"
 
   tempo:
     image: grafana/tempo:2.7.1
@@ -146,7 +169,7 @@ services:
       - ./tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
       - tempodata:/var/tempo
     ports:
-      - "3200:3200"
+      - "127.0.0.1:3200:3200"
 
   grafana:
     image: grafana/grafana:11.5.2
@@ -159,7 +182,7 @@ services:
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafanadata:/var/lib/grafana
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     depends_on:
       - prometheus
       - victoria-metrics
@@ -184,6 +207,7 @@ services:
 
 volumes:
   mssqldata:
+  alertmanagerdata:
   otel-agent:
   promdata:
   vmdata:

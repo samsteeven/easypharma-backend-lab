@@ -1,0 +1,12 @@
+# Surcharge « proche de la production » : collecte Prometheus à 15 s et 10 % des traces échantillonnées.
+#   docker compose -f docker-compose.yml -f docker-compose.prodlike.yml up -d
+# (les ports sont déjà limités à 127.0.0.1 dans docker-compose.yml)
+services:
+  prometheus:
+    volumes:
+      - ./prometheus/prometheus.prodlike.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - promdata:/prometheus
+  backend:
+    environment:
+      OTEL_TRACES_SAMPLER_ARG: "0.1"
