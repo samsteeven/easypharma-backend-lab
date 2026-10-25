@@ -1,0 +1,54 @@
+name: Backend CI/CD
+
+on:
+  push:
+    branches: [ "main", "feat/dockeriser" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-test-docker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: maven
+
+      # 1. Build + tests avec profil test activé
+      - name: Build with tests
+        run: ./mvnw clean verify -Dmaven.javadoc.skip=true
+        env:
+          SPRING_PROFILES_ACTIVE: test
+          MAVEN_OPTS: "-Xmx1024m"
+
+      - name: Verify JAR
+        run: ls -la target/*.jar
+
+      # 2. Login Docker Hub (seulement push sur main)
+      - name: Login Docker Hub
+        if: github.event_name == 'pull_request' && github.base_ref == 'main'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 3. Build & Push image
+      - name: Build & Push Docker
+        if: github.event_name == 'pull_request' && github.base_ref == 'main'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            rumtd/easypharma_backend:latest
+            rumtd/easypharma_backend:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
