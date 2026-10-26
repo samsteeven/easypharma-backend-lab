@@ -40,7 +40,8 @@ spring:
   
   h2:
     console:
-      enabled: true
+      # Éteinte par défaut : une console SQL ne doit pas exister en production. Le profil de test l'allume.
+      enabled: false
       path: /h2-console
       settings:
         trace: false
@@ -174,6 +175,12 @@ app:
     allow-credentials: true
     max-age: 3600
 
+  # Sécurité des endpoints d'exploitation
+  security:
+    # true : /actuator/metrics et /actuator/prometheus accessibles sans jeton (profil observability, pour que Prometheus
+    # puisse les lire). Partout ailleurs, ces deux endpoints ne sont même pas exposés, et exigent un jeton si on les expose.
+    public-metrics: false
+
   # Frontend URL for link generation (Reset password, etc.)
   frontend-url: ${FRONTEND_URL:http://localhost:4200}
 
@@ -199,11 +206,11 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus
+        include: health,info
       base-path: /actuator
   endpoint:
     health:
-      show-details: always
+      show-details: when-authorized
       probes:
         enabled: true
     metrics:

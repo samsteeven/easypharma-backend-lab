@@ -1,5 +1,14 @@
 # Profil activé avec dev,sqlserver dans observability/docker-compose.yml : histogrammes et étiquettes pour Prometheus.
+# Pile de démonstration uniquement : Prometheus lit les métriques sans jeton.
+app:
+  security:
+    public-metrics: true
+
 management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
   metrics:
     tags:
       application: easypharma-backend
