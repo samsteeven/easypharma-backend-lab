@@ -6,7 +6,10 @@ param(
     [string]$Mvn = 'mvn'
 )
 
-$env:JWT_SECRET = $env:JWT_SECRET ? $env:JWT_SECRET : 'dGVzdC1vbmx5LXNlY3JldC1rZXktZm9yLWVhc3lwaGFybWEtdGVzdHM='
+if (-not $env:JWT_SECRET) {
+    # Secret jetable, propre à ce lancement : aucune valeur fixe dans le dépôt (36 caractères distincts, assez pour HS256).
+    $env:JWT_SECRET = -join ((48..57) + (97..122) | Get-Random -Count 64 | ForEach-Object { [char]$_ })
+}
 switch ($Db) {
     'postgres' {
         $env:SPRING_DATASOURCE_URL = 'jdbc:tc:postgresql:16-alpine:///easypharma_test'

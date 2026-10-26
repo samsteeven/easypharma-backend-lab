@@ -1,0 +1,4 @@
+# Constat gitleaks sur l'historique : valeur par défaut de JWT_SECRET dans scripts/run-tests.ps1 (commit 81d94d7).
+# La valeur est retirée du fichier (secret jetable généré à chaque lancement) mais reste lisible dans ce commit.
+# À RETIRER de cette liste si la valeur correspondait à un secret réellement utilisé : il faudrait alors la révoquer.
+81d94d71e511b655a955a58ec440fa6fb21df24f:scripts/run-tests.ps1:generic-api-key:9
