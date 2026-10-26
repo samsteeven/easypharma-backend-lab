@@ -23,6 +23,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.ServletException;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -36,6 +38,14 @@ public class WebSecurityConfig {
     // l'environnement (APP_CORS_ALLOWED_ORIGINS) avec l'adresse réelle du frontend.
     @Value("${app.cors.allowed-origins}")
     private String[] allowedOrigins;
+
+    // Console H2 : seulement si elle est activée par la configuration (jamais par défaut).
+    @Value("${spring.h2.console.enabled:false}")
+    private boolean h2ConsoleEnabled;
+
+    // Métriques lisibles sans jeton : profil observability seulement.
+    @Value("${app.security.public-metrics:false}")
+    private boolean publicMetrics;
 
     @Bean
     public AuthenticationManager authenticationManager(
@@ -55,6 +65,22 @@ public class WebSecurityConfig {
         };
     }
 
+    /**
+     * Chemins ouverts sans authentification en dehors de l'API : la santé (sondes Kubernetes, vérifications de
+     * disponibilité) et les infos ; les métriques et la console H2 seulement si la configuration le demande.
+     */
+    private String[] operationalPublicPaths() {
+        List<String> paths = new ArrayList<>(List.of("/actuator/health/**", "/actuator/info"));
+        if (publicMetrics) {
+            paths.add("/actuator/metrics/**");
+            paths.add("/actuator/prometheus");
+        }
+        if (h2ConsoleEnabled) {
+            paths.add("/h2-console/**");
+        }
+        return paths.toArray(String[]::new);
+    }
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -66,8 +92,7 @@ public class WebSecurityConfig {
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/.well-known/**").permitAll()
                         .requestMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        .requestMatchers("/actuator/**").permitAll()
-                        .requestMatchers("/h2-console/**").permitAll()
+                        .requestMatchers(operationalPublicPaths()).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/reviews/pharmacy/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/pharmacies/**").permitAll()
 
@@ -75,9 +100,12 @@ public class WebSecurityConfig {
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(authenticationEntryPoint()))
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
-                .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable)) // Pour H2
-                                                                                                         // console
-        ;
+                // La console H2 s'affiche dans des cadres : on ne relâche la protection que si elle est activée.
+                .headers(headers -> {
+                    if (h2ConsoleEnabled) {
+                        headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable);
+                    }
+                });
 
         return http.build();
     }
