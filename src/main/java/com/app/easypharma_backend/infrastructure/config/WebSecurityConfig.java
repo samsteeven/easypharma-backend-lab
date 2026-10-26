@@ -2,6 +2,7 @@ package com.app.easypharma_backend.infrastructure.config;
 
 import com.app.easypharma_backend.infrastructure.security.JwtFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -30,6 +31,11 @@ import java.io.IOException;
 public class WebSecurityConfig {
 
     private final JwtFilter jwtFilter;
+
+    // Origines autorisées : app.cors.allowed-origins (déjà utilisée par les contrôleurs). En production, la définir par
+    // l'environnement (APP_CORS_ALLOWED_ORIGINS) avec l'adresse réelle du frontend.
+    @Value("${app.cors.allowed-origins}")
+    private String[] allowedOrigins;
 
     @Bean
     public AuthenticationManager authenticationManager(
@@ -79,7 +85,7 @@ public class WebSecurityConfig {
     @Bean
     public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
         org.springframework.web.cors.CorsConfiguration configuration = new org.springframework.web.cors.CorsConfiguration();
-        configuration.setAllowedOrigins(java.util.List.of("*")); // Allow all origins for dev
+        configuration.setAllowedOrigins(java.util.List.of(allowedOrigins));
         configuration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(java.util.List.of("*")); // Allow all headers (Authorization, Content-Type,
                                                                  // etc.)
