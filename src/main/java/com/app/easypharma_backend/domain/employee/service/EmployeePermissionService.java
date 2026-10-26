@@ -24,6 +24,9 @@ public class EmployeePermissionService {
     /**
      * Get permissions for an employee. If none exist, create default permissions.
      */
+    // @Transactional ici : createDefaultPermissions est appelée sur « this », donc son propre @Transactional (proxy Spring)
+    // n'est pas appliqué ; la transaction doit être ouverte par l'appelant.
+    @Transactional
     public EmployeePermissionDTO getPermissions(UUID employeeId) {
         EmployeePermission permission = permissionRepository.findByEmployeeId(employeeId)
                 .orElseGet(() -> createDefaultPermissions(employeeId));
@@ -84,6 +87,7 @@ public class EmployeePermissionService {
     /**
      * Check if an employee has a specific permission
      */
+    @Transactional
     public boolean hasPermission(UUID employeeId, String permissionType) {
         EmployeePermission permission = permissionRepository.findByEmployeeId(employeeId)
                 .orElseGet(() -> createDefaultPermissions(employeeId));
